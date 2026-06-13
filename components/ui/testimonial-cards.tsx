@@ -1,12 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
-import { Search, GitBranch, Cpu, Rocket, ArrowRight, Sparkles } from "lucide-react";
+import {
+  motion,
+  AnimatePresence,
+  useReducedMotion,
+  type Transition,
+  type TargetAndTransition,
+} from "framer-motion";
+import Image from "next/image";
+import { Search, GitBranch, Cpu, Rocket, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type Position = "front" | "middle" | "back" | "hidden";
 
 interface Stage {
   id: number;
@@ -19,6 +24,7 @@ interface Stage {
   icon: React.ReactNode;
   cardBg: string;
   glowColor: string;
+  particleColor: string;
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -37,9 +43,10 @@ const stages: Stage[] = [
       "Identify gaps, opportunities & quick wins",
     ],
     accent: { from: "#a855f7", via: "#ec4899", to: "#f43f5e" },
-    icon: <Search className="w-8 h-8" />,
-    cardBg: "from-purple-950/80 via-pink-950/60 to-slate-900/80",
-    glowColor: "rgba(168,85,247,0.4)",
+    icon: <Search className="w-7 h-7" />,
+    cardBg: "from-purple-950/90 via-pink-950/70 to-slate-900/90",
+    glowColor: "rgba(168,85,247,0.45)",
+    particleColor: "168,85,247",
   },
   {
     id: 2,
@@ -54,9 +61,10 @@ const stages: Stage[] = [
       "Pre-session prep & post-workshop support included",
     ],
     accent: { from: "#6366f1", via: "#8b5cf6", to: "#a78bfa" },
-    icon: <GitBranch className="w-8 h-8" />,
-    cardBg: "from-indigo-950/80 via-violet-950/60 to-slate-900/80",
-    glowColor: "rgba(99,102,241,0.4)",
+    icon: <GitBranch className="w-7 h-7" />,
+    cardBg: "from-indigo-950/90 via-violet-950/70 to-slate-900/90",
+    glowColor: "rgba(99,102,241,0.45)",
+    particleColor: "99,102,241",
   },
   {
     id: 3,
@@ -71,9 +79,10 @@ const stages: Stage[] = [
       "Audits, infrastructure, workflow design & training",
     ],
     accent: { from: "#06b6d4", via: "#7c3aed", to: "#4f46e5" },
-    icon: <Cpu className="w-8 h-8" />,
-    cardBg: "from-cyan-950/80 via-purple-950/60 to-slate-900/80",
-    glowColor: "rgba(6,182,212,0.4)",
+    icon: <Cpu className="w-7 h-7" />,
+    cardBg: "from-cyan-950/90 via-purple-950/70 to-slate-900/90",
+    glowColor: "rgba(6,182,212,0.45)",
+    particleColor: "6,182,212",
   },
   {
     id: 4,
@@ -88,26 +97,43 @@ const stages: Stage[] = [
       "AI Clinics / JV Days — from £1,500/day",
     ],
     accent: { from: "#f59e0b", via: "#ec4899", to: "#d946ef" },
-    icon: <Rocket className="w-8 h-8" />,
-    cardBg: "from-amber-950/80 via-pink-950/60 to-slate-900/80",
-    glowColor: "rgba(245,158,11,0.4)",
+    icon: <Rocket className="w-7 h-7" />,
+    cardBg: "from-amber-950/90 via-pink-950/70 to-slate-900/90",
+    glowColor: "rgba(245,158,11,0.45)",
+    particleColor: "245,158,11",
   },
 ];
 
+// ─── Card position calculator ─────────────────────────────────────────────────
+
+function getCardStyle(stageIndex: number, currentIndex: number) {
+  const diff = stageIndex - currentIndex;
+  switch (diff) {
+    case 0:  return { x: "0%",    rotate: "-3deg", scale: 1,    opacity: 1,   filter: "blur(0px)",   zIndex: 10, interactive: true  };
+    case 1:  return { x: "8%",    rotate: "3.5deg",scale: 0.93, opacity: 0.7, filter: "blur(1px)",   zIndex: 6,  interactive: false };
+    case 2:  return { x: "14%",   rotate: "6deg",  scale: 0.87, opacity: 0.4, filter: "blur(2.5px)", zIndex: 3,  interactive: false };
+    case -1: return { x: "-8%",   rotate: "-7deg", scale: 0.90, opacity: 0.5, filter: "blur(2px)",   zIndex: 5,  interactive: false };
+    default: return { x: "0%",    rotate: "0deg",  scale: 0.82, opacity: 0,   filter: "blur(5px)",   zIndex: 0,  interactive: false };
+  }
+}
+
 // ─── Particles ────────────────────────────────────────────────────────────────
 
-function Particles({ activeIndex }: { activeIndex: number }) {
-  const colors = [
-    "rgba(168,85,247,0.7)",
-    "rgba(99,102,241,0.7)",
-    "rgba(6,182,212,0.7)",
-    "rgba(245,158,11,0.7)",
-  ];
-  const color = colors[activeIndex] ?? colors[0];
+function Particles({
+  activeIndex,
+  celebrate,
+  prefersReduced,
+}: {
+  activeIndex: number;
+  celebrate: boolean;
+  prefersReduced: boolean;
+}) {
+  const pc = stages[activeIndex]?.particleColor ?? "168,85,247";
+  const count = prefersReduced ? 0 : celebrate ? 50 : 28;
 
   const particles = React.useMemo(
     () =>
-      Array.from({ length: 30 }, (_, i) => ({
+      Array.from({ length: 50 }, (_, i) => ({
         id: i,
         x: Math.random() * 100,
         y: Math.random() * 100,
@@ -118,9 +144,11 @@ function Particles({ activeIndex }: { activeIndex: number }) {
     []
   );
 
+  if (count === 0) return null;
+
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {particles.map((p) => (
+      {particles.slice(0, count).map((p) => (
         <motion.div
           key={p.id}
           className="absolute rounded-full"
@@ -129,107 +157,364 @@ function Particles({ activeIndex }: { activeIndex: number }) {
             top: `${p.y}%`,
             width: p.size,
             height: p.size,
-            backgroundColor: color,
+            backgroundColor: `rgba(${pc},0.75)`,
           }}
-          animate={{ y: [0, -35, 0], opacity: [0, 0.9, 0], scale: [0.5, 1.3, 0.5] }}
-          transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: "easeInOut" }}
+          animate={
+            celebrate
+              ? { y: [0, -60, 0], opacity: [0, 1, 0], scale: [0.5, 2, 0.5] }
+              : { y: [0, -35, 0], opacity: [0, 0.85, 0], scale: [0.5, 1.3, 0.5] }
+          }
+          transition={{
+            duration: celebrate ? p.duration * 0.5 : p.duration,
+            delay: p.delay,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
         />
       ))}
     </div>
   );
 }
 
-// ─── Progress Indicator ───────────────────────────────────────────────────────
+// ─── Progress Spine ───────────────────────────────────────────────────────────
 
-function ProgressIndicator({ activeIndex }: { activeIndex: number }) {
+function ProgressSpine({
+  currentIndex,
+  total,
+  celebrate,
+  prefersReduced,
+}: {
+  currentIndex: number;
+  total: number;
+  celebrate: boolean;
+  prefersReduced: boolean;
+}) {
   const labels = ["Clarify", "Align", "Implement", "Scale"];
+  const progress = currentIndex / (total - 1);
 
   return (
-    <div className="flex items-center mb-10 select-none w-full max-w-xs sm:max-w-sm">
-      {labels.map((label, i) => (
-        <React.Fragment key={label}>
-          <div className="flex flex-col items-center">
-            <motion.div
-              animate={{
-                scale: i === activeIndex ? 1.2 : 1,
-                backgroundColor: i <= activeIndex ? "#a855f7" : "#334155",
-                boxShadow: i === activeIndex ? "0 0 16px rgba(168,85,247,0.7)" : "none",
-              }}
-              transition={{ duration: 0.4 }}
-              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
-            >
-              {i + 1}
-            </motion.div>
-            <motion.span
-              animate={{ opacity: i === activeIndex ? 1 : 0.35 }}
-              transition={{ duration: 0.4 }}
-              className="text-[10px] mt-1.5 font-semibold text-slate-400 hidden sm:block tracking-wide"
-            >
-              {label}
-            </motion.span>
-          </div>
-          {i < labels.length - 1 && (
-            <motion.div
-              animate={{ backgroundColor: i < activeIndex ? "#a855f7" : "#1e293b" }}
-              transition={{ duration: 0.5 }}
-              className="h-[2px] flex-1 mx-2 mt-[-14px] sm:mt-[-22px] rounded-full"
-            />
-          )}
-        </React.Fragment>
-      ))}
+    <div className="relative z-10 mb-10 select-none w-full max-w-[320px] sm:max-w-sm">
+      {/* Track */}
+      <div className="relative flex items-center">
+        {/* Background track line */}
+        <div className="absolute left-0 right-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-slate-800" />
+
+        {/* Filled track */}
+        <motion.div
+          className="absolute left-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full"
+          style={{
+            background: "linear-gradient(90deg, #a855f7, #6366f1, #06b6d4, #f59e0b)",
+            boxShadow: celebrate ? "0 0 12px rgba(168,85,247,0.8)" : "none",
+          }}
+          animate={{ width: `${progress * 100}%` }}
+          transition={prefersReduced ? { duration: 0 } : { type: "spring", stiffness: 120, damping: 20 }}
+        />
+
+        {/* Nodes */}
+        <div className="relative z-10 flex w-full justify-between">
+          {labels.map((label, i) => {
+            const isActive = i === currentIndex;
+            const isPast = i < currentIndex;
+            return (
+              <div key={label} className="flex flex-col items-center">
+                <motion.div
+                  animate={{
+                    scale: isActive ? 1.25 : 1,
+                    backgroundColor: isPast || isActive ? "#a855f7" : "#1e293b",
+                    boxShadow:
+                      isActive
+                        ? celebrate
+                          ? "0 0 24px rgba(168,85,247,1)"
+                          : "0 0 16px rgba(168,85,247,0.7)"
+                        : "none",
+                  }}
+                  transition={prefersReduced ? { duration: 0 } : { type: "spring", stiffness: 200, damping: 20 }}
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black text-white border border-slate-700"
+                >
+                  {i + 1}
+                </motion.div>
+                <motion.span
+                  animate={{ opacity: isActive ? 1 : 0.3, y: isActive ? 0 : 2 }}
+                  transition={{ duration: 0.35 }}
+                  className="mt-2 text-[9px] font-bold tracking-widest uppercase text-slate-400 hidden sm:block"
+                >
+                  {label}
+                </motion.span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
+  );
+}
+
+// ─── Gesture Hint ─────────────────────────────────────────────────────────────
+
+function GhostTouch({
+  direction,
+  accentColor,
+}: {
+  direction: "left" | "right";
+  accentColor: string;
+}) {
+  // touch point travels from right→left or left→right across card centre
+  const fromX = direction === "left" ? "55%" : "45%";
+  const toX = direction === "left" ? "20%" : "80%";
+
+  // Trail origin and direction
+  const trailFromX = direction === "left" ? "55%" : "45%";
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden rounded-2xl">
+      {/* Swipe trail */}
+      <motion.div
+        className="absolute top-[52%] h-[2px] rounded-full"
+        style={{
+          left: direction === "left" ? "20%" : "45%",
+          width: direction === "left" ? "35%" : "35%",
+          background: `linear-gradient(${direction === "left" ? "to left" : "to right"}, transparent, ${accentColor}80, ${accentColor}40)`,
+          filter: "blur(1.5px)",
+        }}
+        initial={{ scaleX: 0, opacity: 0, transformOrigin: direction === "left" ? "right" : "left" }}
+        animate={{
+          scaleX: [0, 0, 1, 1, 0.3, 0],
+          opacity: [0, 0, 0.9, 0.9, 0.4, 0],
+        }}
+        transition={{ duration: 2.2, times: [0, 0.1, 0.35, 0.65, 0.85, 1], ease: "easeOut" }}
+      />
+
+      {/* Touch point */}
+      <motion.div
+        className="absolute top-[52%] -translate-y-1/2 -translate-x-1/2 w-10 h-10 rounded-full"
+        style={{
+          background: `radial-gradient(circle, ${accentColor}50 0%, ${accentColor}15 60%, transparent 100%)`,
+          boxShadow: `0 0 20px ${accentColor}60, 0 0 0 1px ${accentColor}30`,
+          backdropFilter: "blur(2px)",
+        }}
+        initial={{ left: fromX, opacity: 0, scale: 0.6 }}
+        animate={{
+          left: [fromX, fromX, toX, toX],
+          opacity: [0, 1, 1, 0],
+          scale: [0.6, 1, 0.9, 0.6],
+        }}
+        transition={{
+          duration: 2.2,
+          times: [0, 0.08, 0.72, 1],
+          ease: [0.22, 1, 0.36, 1],
+        }}
+      />
+
+      {/* Direction label */}
+      <motion.div
+        className="absolute bottom-[18%] left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-[10px] font-semibold tracking-widest uppercase"
+        style={{ color: `${accentColor}99` }}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: [0, 0, 1, 1, 0], y: [4, 4, 0, 0, -4] }}
+        transition={{ duration: 2.2, times: [0, 0.2, 0.4, 0.75, 1] }}
+      >
+        {direction === "left" ? (
+          <>
+            <ChevronLeft className="w-3 h-3" />
+            {direction === "left" ? "next stage" : "previous stage"}
+          </>
+        ) : (
+          <>
+            previous stage
+            <ChevronRight className="w-3 h-3" />
+          </>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+function SwipeHint({
+  show,
+  activeIndex,
+  prefersReduced,
+}: {
+  show: boolean;
+  activeIndex: number;
+  prefersReduced: boolean;
+}) {
+  const [cycle, setCycle] = React.useState(0);
+  const [hintKey, setHintKey] = React.useState(0);
+  const accentColor = stages[activeIndex]?.accent.from ?? "#a855f7";
+  // Alternate: even cycles go left, odd go right (unless at boundary)
+  const direction: "left" | "right" =
+    activeIndex === 0 ? "left" : activeIndex === stages.length - 1 ? "right" : cycle % 2 === 0 ? "left" : "right";
+
+  React.useEffect(() => {
+    if (!show || prefersReduced) return;
+    const t = setTimeout(() => {
+      setCycle((c) => c + 1);
+      setHintKey((k) => k + 1);
+    }, 5500);
+    return () => clearTimeout(t);
+  }, [show, cycle, prefersReduced]);
+
+  if (prefersReduced) return null;
+
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          key="hint-wrapper"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          className="absolute inset-0 z-30 rounded-2xl"
+        >
+          <GhostTouch key={hintKey} direction={direction} accentColor={accentColor} />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
 // ─── CTA Card ─────────────────────────────────────────────────────────────────
 
-function CTACard({ onReset }: { onReset: () => void }) {
+function CTACard({ onReset, prefersReduced }: { onReset: () => void; prefersReduced: boolean }) {
+  const [hovering, setHovering] = React.useState(false);
+
+  const stagger = (i: number): { initial: TargetAndTransition; animate: TargetAndTransition; transition: Transition } => ({
+    initial: { opacity: 0, y: prefersReduced ? 0 : 18 },
+    animate: { opacity: 1, y: 0 },
+    transition: { delay: i * 0.12 + 0.1, duration: 0.55, ease: "easeOut" },
+  });
+
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9, y: 24 }}
+      initial={{ opacity: 0, scale: prefersReduced ? 1 : 0.92, y: prefersReduced ? 0 : 24 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-      className="absolute inset-0 flex flex-col items-center justify-center gap-5 rounded-2xl border border-purple-500/30 bg-slate-900/90 p-8 shadow-2xl backdrop-blur-xl text-center"
+      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-2xl border border-purple-500/25 bg-slate-950/95 p-7 shadow-2xl backdrop-blur-xl text-center overflow-hidden"
       style={{
         boxShadow:
-          "0 0 80px rgba(168,85,247,0.2), 0 0 0 1px rgba(168,85,247,0.15), inset 0 1px 0 rgba(255,255,255,0.05)",
+          "0 0 80px rgba(168,85,247,0.18), 0 0 0 1px rgba(168,85,247,0.12), inset 0 1px 0 rgba(255,255,255,0.04)",
       }}
     >
-      {/* Glow backdrop */}
-      <div className="pointer-events-none absolute inset-0 rounded-2xl"
-        style={{ background: "radial-gradient(ellipse 70% 60% at 50% 30%, rgba(168,85,247,0.12), transparent)" }}
+      {/* Ambient glow */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-2xl"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 55% at 50% 25%, rgba(168,85,247,0.1), transparent)",
+        }}
       />
 
-      <motion.div
-        animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.1, 1] }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <Sparkles className="w-12 h-12 text-purple-400" />
+      {/* Logo */}
+      <motion.div {...stagger(0)} className="relative z-10">
+        <div className="relative">
+          {/* Subtle logo glow */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-full -z-10"
+            style={{
+              background: "radial-gradient(circle, rgba(168,85,247,0.15), transparent 70%)",
+              filter: "blur(12px)",
+              transform: "scale(1.3)",
+            }}
+          />
+          <Image
+            src="/logo.png"
+            alt="Business With AI Strategist"
+            width={280}
+            height={100}
+            className="h-auto w-auto object-contain max-h-[70px] sm:max-h-[80px] md:max-h-[90px]"
+            priority
+          />
+        </div>
       </motion.div>
 
-      <div className="relative z-10 space-y-3">
-        <h3 className="text-2xl sm:text-3xl font-black text-white leading-tight">
-          Ready to identify your next step?
-        </h3>
-        <p className="text-sm text-slate-400 leading-relaxed max-w-xs mx-auto">
-          Whether you need clarity, implementation support, or a strategy for scaling AI across your organisation — every transformation starts with one conversation.
-        </p>
-      </div>
+      {/* Divider */}
+      <motion.div
+        {...stagger(1)}
+        className="relative z-10 w-16 h-px"
+        style={{ background: "linear-gradient(90deg, transparent, rgba(168,85,247,0.5), transparent)" }}
+      />
 
-      <a
-        href="#strategy-call"
-        className="relative z-10 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:from-purple-500 hover:to-pink-500 hover:shadow-purple-500/40 hover:shadow-2xl hover:scale-105 active:scale-95"
-      >
-        Book Your Complimentary Strategy Call
-        <ArrowRight className="w-4 h-4" />
-      </a>
+      {/* Heading */}
+      <motion.h3 {...stagger(2)} className="relative z-10 text-xl sm:text-2xl font-black text-white leading-tight">
+        Ready to identify your next step?
+      </motion.h3>
 
-      <button
+      {/* Body */}
+      <motion.p {...stagger(3)} className="relative z-10 text-xs text-slate-400 leading-relaxed max-w-[260px]">
+        Whether you need clarity, implementation support, or a strategy for scaling AI across your organisation — every transformation starts with one conversation.
+      </motion.p>
+
+      {/* CTA Button */}
+      <motion.div {...stagger(4)} className="relative z-10 w-full">
+        <motion.button
+          onHoverStart={() => setHovering(true)}
+          onHoverEnd={() => setHovering(false)}
+          whileHover={{ scale: 1.03, y: -2 }}
+          whileTap={{ scale: 0.97 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          onClick={() =>
+            window.open(
+              "https://calendly.com/chatwithmarnie/business-with-ai-strategist",
+              "_blank",
+              "noopener,noreferrer"
+            )
+          }
+          className="relative w-full overflow-hidden rounded-2xl px-6 py-4 text-sm font-bold text-white shadow-xl"
+          style={{
+            background: "linear-gradient(135deg, #7c3aed, #a855f7, #ec4899)",
+            minHeight: 56,
+            boxShadow: hovering
+              ? "0 0 40px rgba(168,85,247,0.5), 0 8px 32px rgba(168,85,247,0.3)"
+              : "0 4px 24px rgba(168,85,247,0.25)",
+          }}
+        >
+          {/* Shimmer on hover */}
+          <AnimatePresence>
+            {hovering && (
+              <motion.div
+                className="pointer-events-none absolute inset-0"
+                initial={{ x: "-100%", opacity: 0 }}
+                animate={{ x: "100%", opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                style={{
+                  background:
+                    "linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.15) 50%, transparent 70%)",
+                }}
+              />
+            )}
+          </AnimatePresence>
+          <span className="relative z-10 flex items-center justify-center gap-2">
+            Book Your Complimentary Strategy Call
+            <ArrowRight className="w-4 h-4" />
+          </span>
+        </motion.button>
+
+        {/* Micro-copy on hover */}
+        <AnimatePresence>
+          {hovering && (
+            <motion.p
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.3 }}
+              className="mt-2 text-[10px] text-slate-500 tracking-wide"
+            >
+              30 minutes · Complimentary · No obligation
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* Reset */}
+      <motion.button
+        {...stagger(5)}
         onClick={onReset}
-        className="relative z-10 text-xs text-slate-600 hover:text-slate-300 transition-colors underline underline-offset-4"
+        className="relative z-10 text-[10px] text-slate-700 hover:text-slate-400 transition-colors underline underline-offset-4 tracking-wide"
       >
         Explore the stages again
-      </button>
+      </motion.button>
     </motion.div>
   );
 }
@@ -238,46 +523,61 @@ function CTACard({ onReset }: { onReset: () => void }) {
 
 interface CardProps {
   stage: Stage;
-  position: Position;
-  handleShuffle: () => void;
+  stageIndex: number;
+  currentIndex: number;
+  onNext: () => void;
+  onPrev: () => void;
+  onInteract: () => void;
+  prefersReduced: boolean;
+  showHint: boolean;
 }
 
-function StageCard({ stage, position, handleShuffle }: CardProps) {
-  const dragRef = React.useRef(0);
-  const isFront = position === "front";
+function StageCard({
+  stage,
+  stageIndex,
+  currentIndex,
+  onNext,
+  onPrev,
+  onInteract,
+  prefersReduced,
+  showHint,
+}: CardProps) {
+  const style = getCardStyle(stageIndex, currentIndex);
+  const dragStartX = React.useRef(0);
+  const isActive = style.interactive;
 
-  const variants: Record<Position, { rotate: string; x: string; scale: number; filter: string; zIndex: number }> = {
-    front:  { rotate: "-4deg",  x: "0%",   scale: 1,    filter: "blur(0px)",   zIndex: 10 },
-    middle: { rotate: "1deg",   x: "5%",   scale: 0.96, filter: "blur(0.5px)", zIndex: 5  },
-    back:   { rotate: "5deg",   x: "10%",  scale: 0.92, filter: "blur(1.5px)", zIndex: 2  },
-    hidden: { rotate: "8deg",   x: "15%",  scale: 0.88, filter: "blur(3px)",   zIndex: 0  },
-  };
-
-  const v = variants[position];
+  const springConfig = prefersReduced
+    ? { duration: 0 }
+    : { type: "spring" as const, stiffness: 180, damping: 26 };
 
   return (
     <motion.div
-      animate={{ rotate: v.rotate, x: v.x, scale: v.scale, filter: v.filter }}
-      style={{ zIndex: v.zIndex }}
-      drag={isFront}
-      dragElastic={0.2}
-      dragConstraints={{ top: 0, left: 0, right: 0, bottom: 0 }}
+      animate={{
+        x: style.x,
+        rotate: style.rotate,
+        scale: style.scale,
+        opacity: style.opacity,
+        filter: style.filter,
+        zIndex: style.zIndex,
+      }}
+      transition={springConfig}
+      drag={isActive ? "x" : false}
+      dragElastic={{ left: 0.15, right: 0.15 }}
+      dragConstraints={{ left: 0, right: 0 }}
       onDragStart={(e: any) => {
-        dragRef.current = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+        dragStartX.current = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+        onInteract();
       }}
-      onDragEnd={(e: any) => {
-        const endX = e.clientX ?? e.changedTouches?.[0]?.clientX ?? 0;
-        if (dragRef.current - endX > 90) {
-          handleShuffle();
-        }
-        dragRef.current = 0;
+      onDragEnd={(_e: any, info: any) => {
+        const delta = info.offset.x;
+        if (delta < -80) onNext();
+        else if (delta > 80) onPrev();
       }}
-      transition={{ duration: 0.45, ease: [0.32, 0.72, 0, 1] }}
       className={[
-        "absolute inset-0 select-none rounded-2xl border border-white/[0.08] flex flex-col justify-between overflow-hidden",
+        "absolute inset-0 select-none rounded-2xl border border-white/[0.07] flex flex-col justify-between overflow-hidden",
         `bg-gradient-to-br ${stage.cardBg}`,
         "p-7 shadow-2xl backdrop-blur-xl",
-        isFront ? "cursor-grab active:cursor-grabbing" : "pointer-events-none",
+        isActive ? "cursor-grab active:cursor-grabbing" : "pointer-events-none",
       ].join(" ")}
     >
       {/* Radial glow */}
@@ -287,6 +587,11 @@ function StageCard({ stage, position, handleShuffle }: CardProps) {
           background: `radial-gradient(circle at 25% 15%, ${stage.glowColor}, transparent 55%)`,
         }}
       />
+
+      {/* Gesture hint overlay */}
+      {isActive && (
+        <SwipeHint show={showHint} activeIndex={currentIndex} prefersReduced={prefersReduced} />
+      )}
 
       {/* Top */}
       <div className="relative z-10">
@@ -302,7 +607,7 @@ function StageCard({ stage, position, handleShuffle }: CardProps) {
             {stage.stage}
           </span>
           <motion.div
-            animate={isFront ? { rotate: [0, 8, -8, 0] } : { rotate: 0 }}
+            animate={isActive && !prefersReduced ? { rotate: [0, 8, -8, 0] } : { rotate: 0 }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
             style={{ color: stage.accent.from }}
           >
@@ -357,83 +662,172 @@ function StageCard({ stage, position, handleShuffle }: CardProps) {
         </ul>
       </div>
 
-      {/* Drag hint — fades out after a moment */}
-      {isFront && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 1, 1, 0] }}
-          transition={{ delay: 0.8, duration: 2.5, times: [0, 0.2, 0.8, 1] }}
-          className="relative z-10 mt-4 flex items-center justify-center gap-1.5 text-[10px] text-slate-500"
-        >
-          <ArrowRight className="w-3 h-3" />
-          Drag left to reveal the next stage
-        </motion.div>
+      {/* Nav arrows (always visible, keyboard / tap accessible) */}
+      {isActive && (
+        <div className="relative z-10 mt-5 flex items-center justify-between">
+          <button
+            onClick={onPrev}
+            disabled={currentIndex === 0}
+            className="flex items-center gap-1 text-[10px] font-semibold text-slate-600 hover:text-slate-300 transition-colors disabled:opacity-0 disabled:pointer-events-none"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+            Back
+          </button>
+          <span className="text-[10px] text-slate-700 tracking-widest">
+            {currentIndex + 1} / {stages.length}
+          </span>
+          <button
+            onClick={onNext}
+            className="flex items-center gap-1 text-[10px] font-semibold text-slate-600 hover:text-slate-300 transition-colors"
+          >
+            Next
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
       )}
     </motion.div>
+  );
+}
+
+// ─── Ambient Background ───────────────────────────────────────────────────────
+
+function AmbientBackground({
+  activeIndex,
+  celebrate,
+  prefersReduced,
+}: {
+  activeIndex: number;
+  celebrate: boolean;
+  prefersReduced: boolean;
+}) {
+  const glowColors = [
+    "rgba(168,85,247,0.08)",
+    "rgba(99,102,241,0.08)",
+    "rgba(6,182,212,0.08)",
+    "rgba(245,158,11,0.08)",
+  ];
+  const glow = glowColors[activeIndex] ?? glowColors[0];
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-950/25 via-[#04040c] to-indigo-950/15" />
+      <motion.div
+        animate={{ backgroundColor: glow }}
+        transition={prefersReduced ? { duration: 0 } : { duration: 1.2 }}
+        className="absolute inset-0"
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99,102,241,0.1), transparent)",
+        }}
+      />
+      {/* Celebration pulse */}
+      <AnimatePresence>
+        {celebrate && !prefersReduced && (
+          <motion.div
+            className="absolute inset-0 rounded-full"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: [0, 0.3, 0], scale: [0.5, 2, 3] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.8, ease: "easeOut" }}
+            style={{
+              background:
+                "radial-gradient(circle at 50% 50%, rgba(168,85,247,0.4), transparent 60%)",
+              transformOrigin: "center",
+            }}
+          />
+        )}
+      </AnimatePresence>
+      {/* Grid */}
+      <div
+        className="absolute inset-0 opacity-[0.04]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+          backgroundSize: "60px 60px",
+        }}
+      />
+    </div>
   );
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 export function RoadmapCards() {
-  const totalStages = stages.length;
-  const [order, setOrder] = React.useState<number[]>(stages.map((_, i) => i));
+  const prefersReduced = useReducedMotion() ?? false;
+  const [currentIndex, setCurrentIndex] = React.useState(0);
   const [showCTA, setShowCTA] = React.useState(false);
-  const shuffleCount = React.useRef(0);
+  const [hasInteracted, setHasInteracted] = React.useState(false);
+  const [showHint, setShowHint] = React.useState(false);
+  const [celebrate, setCelebrate] = React.useState(false);
+  const journeyCompletedOnce = React.useRef(false);
+  const inactivityTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const activeIndex = order[0];
-
-  const handleShuffle = React.useCallback(() => {
-    shuffleCount.current += 1;
-    setOrder((prev) => {
-      const next = [...prev];
-      const front = next.shift()!;
-      next.push(front);
-      return next;
-    });
-    if (shuffleCount.current >= totalStages) {
-      setTimeout(() => setShowCTA(true), 500);
+  // Show hint after 3s of inactivity (only before first interaction)
+  const resetInactivityTimer = React.useCallback(() => {
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    if (!hasInteracted && !prefersReduced) {
+      inactivityTimer.current = setTimeout(() => setShowHint(true), 3000);
     }
-  }, [totalStages]);
+  }, [hasInteracted, prefersReduced]);
+
+  React.useEffect(() => {
+    resetInactivityTimer();
+    return () => {
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    };
+  }, [resetInactivityTimer]);
+
+  const handleInteract = React.useCallback(() => {
+    setHasInteracted(true);
+    setShowHint(false);
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+  }, []);
+
+  const handleNext = React.useCallback(() => {
+    handleInteract();
+    if (currentIndex < stages.length - 1) {
+      setCurrentIndex((i) => i + 1);
+    } else {
+      // Completed the journey
+      if (!journeyCompletedOnce.current) {
+        journeyCompletedOnce.current = true;
+        setCelebrate(true);
+        setTimeout(() => setCelebrate(false), 2200);
+      }
+      setTimeout(() => setShowCTA(true), 400);
+    }
+  }, [currentIndex, handleInteract]);
+
+  const handlePrev = React.useCallback(() => {
+    handleInteract();
+    if (currentIndex > 0) {
+      setCurrentIndex((i) => i - 1);
+    }
+  }, [currentIndex, handleInteract]);
 
   const handleReset = () => {
-    shuffleCount.current = 0;
     setShowCTA(false);
-    setOrder(stages.map((_, i) => i));
-  };
-
-  const positionFor = (orderIndex: number): Position => {
-    if (orderIndex === 0) return "front";
-    if (orderIndex === 1) return "middle";
-    if (orderIndex === 2) return "back";
-    return "hidden";
+    setCurrentIndex(0);
+    setHasInteracted(false);
+    setShowHint(false);
+    resetInactivityTimer();
   };
 
   return (
     <div className="relative min-h-screen w-full bg-[#04040c] flex flex-col items-center justify-center px-4 py-16 overflow-hidden">
-      {/* Background gradients */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-950/25 via-[#04040c] to-indigo-950/15" />
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99,102,241,0.12), transparent)",
-          }}
-        />
-        {/* Grid lines */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
-          }}
-        />
-      </div>
-
-      {/* Particles */}
-      <Particles activeIndex={activeIndex} />
+      <AmbientBackground
+        activeIndex={currentIndex}
+        celebrate={celebrate}
+        prefersReduced={prefersReduced}
+      />
+      <Particles
+        activeIndex={currentIndex}
+        celebrate={celebrate}
+        prefersReduced={prefersReduced}
+      />
 
       {/* Section header */}
       <div className="relative z-10 text-center mb-10">
@@ -453,7 +847,6 @@ export function RoadmapCards() {
         >
           A strategic pathway from{" "}
           <span
-            className="inline-block"
             style={{
               background: "linear-gradient(135deg, #a855f7, #ec4899)",
               WebkitBackgroundClip: "text",
@@ -471,53 +864,53 @@ export function RoadmapCards() {
           transition={{ delay: 0.3, duration: 0.6 }}
           className="mt-4 text-sm text-slate-500 max-w-sm mx-auto leading-relaxed"
         >
-          Drag each stage to reveal the next phase of transformation.
+          Drag or use the arrows to navigate each stage of transformation.
         </motion.p>
       </div>
 
-      {/* Progress */}
+      {/* Progress spine */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.45 }}
         className="relative z-10"
       >
-        <ProgressIndicator activeIndex={activeIndex} />
+        <ProgressSpine
+          currentIndex={currentIndex}
+          total={stages.length}
+          celebrate={celebrate}
+          prefersReduced={prefersReduced}
+        />
       </motion.div>
 
       {/* Card stack */}
       <motion.div
-        initial={{ opacity: 0, y: 32 }}
+        initial={{ opacity: 0, y: prefersReduced ? 0 : 32 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.55, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         className="relative z-10 w-[90vw] max-w-[340px] sm:max-w-[400px] md:max-w-[440px]"
         style={{ height: 490 }}
       >
-        {showCTA ? (
-          <CTACard onReset={handleReset} />
-        ) : (
-          order.map((stageIndex, orderIndex) => (
-            <StageCard
-              key={stages[stageIndex].id}
-              stage={stages[stageIndex]}
-              position={positionFor(orderIndex)}
-              handleShuffle={handleShuffle}
-            />
-          ))
-        )}
+        <AnimatePresence>
+          {showCTA ? (
+            <CTACard key="cta" onReset={handleReset} prefersReduced={prefersReduced} />
+          ) : (
+            stages.map((stage, stageIndex) => (
+              <StageCard
+                key={stage.id}
+                stage={stage}
+                stageIndex={stageIndex}
+                currentIndex={currentIndex}
+                onNext={handleNext}
+                onPrev={handlePrev}
+                onInteract={handleInteract}
+                prefersReduced={prefersReduced}
+                showHint={showHint && stageIndex === currentIndex}
+              />
+            ))
+          )}
+        </AnimatePresence>
       </motion.div>
-
-      {/* Counter */}
-      {!showCTA && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="relative z-10 mt-8 text-[11px] text-slate-700 tracking-widest uppercase"
-        >
-          Stage {activeIndex + 1} of {totalStages}
-        </motion.p>
-      )}
     </div>
   );
 }
