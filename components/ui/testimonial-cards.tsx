@@ -869,13 +869,14 @@ export function RoadmapCards() {
       <AmbientBackground activeIndex={currentIndex} celebrate={celebrate} prefersReduced={prefersReduced} />
       <Particles activeIndex={currentIndex} celebrate={celebrate} prefersReduced={prefersReduced} />
 
-      {/* Header */}
-      <div className="relative z-10 text-center mb-4">
+      {/* Header — isolated stacking context, always above particles/glows */}
+      <div className="relative z-20 text-center mb-4 isolate">
         <motion.p
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.6 }}
-          className="text-[10px] font-black tracking-[0.35em] uppercase text-purple-400 mb-4"
+          className="text-[10px] font-black tracking-[0.35em] uppercase mb-4"
+          style={{ color: "#C084FC" }}
         >
           Roadmap to AI Transformation
         </motion.p>
@@ -883,15 +884,14 @@ export function RoadmapCards() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.6 }}
-          className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight max-w-xl"
+          className="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight max-w-xl tracking-tight"
+          style={{ color: "#ffffff" }}
         >
           How Clients{" "}
           <span
             style={{
-              background: `linear-gradient(135deg, ${activeSlide?.accent.from ?? "#a855f7"}, ${activeSlide?.accent.to ?? "#f43f5e"})`,
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
+              color: "#C084FC",
+              textShadow: "0 0 10px rgba(192,132,252,0.35)",
             }}
           >
             Work With Me
@@ -901,7 +901,8 @@ export function RoadmapCards() {
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.6 }}
-          className="mt-3 text-sm text-slate-500 max-w-md mx-auto leading-relaxed"
+          className="mt-3 text-sm max-w-md mx-auto leading-relaxed font-normal"
+          style={{ color: "#CBD5E1" }}
         >
           A strategic roadmap from AI clarity and alignment to implementation, scale, and proprietary capability.
         </motion.p>
